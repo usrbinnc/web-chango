@@ -31,7 +31,7 @@ var numPxPerBCol = 32; //canvo width / 5
 var numPxPerBRow = 24; 
 var numPxPerBlock = numPxPerBCol * numPxPerBRow;
 
-var blockMaxGain = 0.02; /*if we have 25 blocks and we want max gain = 0.5:
+var blockMaxGain = 0.04; /*if we have 25 blocks and we want max gain = 0.5:
                            .5 / 25 = .02 max gain per block
                          */
 
@@ -149,7 +149,7 @@ function putOnCanvas(img){
 
     /*the most gain each cell can have is blockMaxGain*/
     /*we want a fraction of that value proportional to the brightness*/
-    synth.gainArray[j].gain.setValue( fractionalIntensity * blockMaxGain )
+    synth.gainArray[j].gain.setValue( fractionalIntensity * blockMaxGain - 0.04 )
 
   }
 
