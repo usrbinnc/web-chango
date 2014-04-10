@@ -23,13 +23,17 @@ var dispctx = dispcanvas.getContext('2d');
 dispctx.scale(4,4);
 
 /*The rate at which the frame rendering callback gets called*/
-var fps = 2;
+var fps = 4;
    
 var numBlocks = 25;
 var blocksPerRow = 5;
 var numPxPerBCol = 32; //canvo width / 5
 var numPxPerBRow = 24; 
 var numPxPerBlock = numPxPerBCol * numPxPerBRow;
+
+var blockMaxGain = 0.02; /*if we have 25 blocks and we want max gain = 0.5:
+                           .5 / 25 = .02 max gain per block
+                         */
 
 var dispw = canvas.width;
 var disph = canvas.height;
@@ -56,7 +60,7 @@ var Synth = function(audiolet, frequency) {
   this.waveArray = new Array();
   for( var i = 0; i < numBlocks; i++ ){
 
-    this.waveArray[i] = new Sine(audiolet, tones[i]/*TODO: Tuning*/);
+    this.waveArray[i] = new Sine(audiolet, tones[i]);
 
   }
 
@@ -127,17 +131,26 @@ function putOnCanvas(img){
     var r = frame.data[off + 0];
     var g = frame.data[off + 1];
     var b = frame.data[off + 2];
-
+    //var a = frame.data[off + 3]; //note: unused
    
     off = brow * blocksPerRow + bcol; 
-    blockArray[off] = blockArray[off] + r + g + b;
+
+    blockArray[off] = blockArray[off] + (0.25*r) + (0.5*g) + (0.25*b);
 
   }
 
   for (var j = 0; j < numBlocks; j++){
+
     var newVal = blockArray[j] / (numPxPerBlock);
     blockArray[j] = newVal;
-    synth.gainArray[j].gain.setValue( newVal / 768 )
+
+    /*256 is the max .25r+.5g+.25b value*/
+    var fractionalIntensity = newVal / 256; 
+
+    /*the most gain each cell can have is blockMaxGain*/
+    /*we want a fraction of that value proportional to the brightness*/
+    synth.gainArray[j].gain.setValue( fractionalIntensity * blockMaxGain )
+
   }
 
   for (var i = 0; i < l; i++) {
@@ -148,10 +161,9 @@ function putOnCanvas(img){
     var bcol = BlockCol(col,canvas.width);
 
     var off = i * 4;
-    frame.data[off + 0] = 0;
-    frame.data[off + 1] = 0;
-    //frame.data[off + 2] = blockArray[brow * blocksPerRow + bcol]; //Math.floor((blockArray[brow * blocksPerRow + bcol] + origframe.data[off + 2]) / 2);
-    frame.data[off + 2] = Math.floor((blockArray[brow * blocksPerRow + bcol] + origframe.data[off + 2]) / 2);
+    frame.data[off + 0] = Math.floor((blockArray[brow * blocksPerRow + bcol] / 4 + origframe.data[off ]) / 2);
+    frame.data[off + 1] = 0;//Math.floor((blockArray[brow * blocksPerRow + bcol] / 3 + origframe.data[off + 1]) / 2);
+    frame.data[off + 2] = 0;// Math.floor((blockArray[brow * blocksPerRow + bcol] / 3 + origframe.data[off + 2]) / 2);
 
   }
  
@@ -209,12 +221,19 @@ function noStream(e) {
 */
 function init(el) {
 
+  navigator.getMedia = (
+                       navigator.getUserMedia ||
+                       navigator.webkitGetUserMedia ||
+                       navigator.mozGetUserMedia ||
+                       navigator.msGetUserMedia
+                       );
+/*
   if (!navigator.getUserMedia) {
     document.getElementById('errorMessage').innerHTML = 'Sorry. <code>navigator.getUserMedia()</code> is not available.';
     return;
   }
-
-  navigator.getUserMedia({video: true}, gotStream, noStream);
+*/
+  navigator.getMedia({video: true}, gotStream, noStream);
   setInterval( putOnCanvas, 1000 / fps );
   synth = new Synth(audiolet, 440);
   synth.connect(this.audiolet.output);
